@@ -1,0 +1,9 @@
+.handler-saves/
+.idea/
+__pycache__/
+localData.py
+botTeter.py
+dataBaseTests.py
+dataBase.py
+dataBase/questions.sqbpro
+dataBase/before/
