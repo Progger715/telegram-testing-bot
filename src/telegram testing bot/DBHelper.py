@@ -2,7 +2,7 @@ import sqlite3
 
 
 def find_in_group(number_group):
-    base = sqlite3.connect('dataBase/DB_chat_test.db')
+    base = sqlite3.connect('../../dataBase/DB_chat_test.db')
     cursor = base.cursor()
     res = cursor.execute('SELECT name, id FROM students WHERE groups == ?', (number_group,)).fetchall()
     base.close()
@@ -10,7 +10,7 @@ def find_in_group(number_group):
 
 
 def find_id_student(number_group, name):
-    base = sqlite3.connect('dataBase/DB_chat_test.db')
+    base = sqlite3.connect('../../dataBase/DB_chat_test.db')
     cursor = base.cursor()
     res = cursor.execute('SELECT id FROM students WHERE groups == ? AND name == ?', (number_group, name)).fetchall()
     base.close()
@@ -18,7 +18,7 @@ def find_id_student(number_group, name):
 
 
 def find_available_test(number_group):
-    base = sqlite3.connect('dataBase/DB_chat_test.db')
+    base = sqlite3.connect('../../dataBase/DB_chat_test.db')
     cursor = base.cursor()
     res = cursor.execute('SELECT name_test, id FROM tests WHERE for_groups == ? ', (number_group,)).fetchall()
     base.close()
@@ -26,7 +26,7 @@ def find_available_test(number_group):
 
 
 def get_description_for_test(id_test):
-    base = sqlite3.connect('dataBase/DB_chat_test.db')
+    base = sqlite3.connect('../../dataBase/DB_chat_test.db')
     cursor = base.cursor()
     res = cursor.execute('SELECT * FROM tests WHERE id == ? ', (id_test,)).fetchall()
     base.close()
@@ -34,7 +34,7 @@ def get_description_for_test(id_test):
 
 
 def get_quantity_questions_test(id_test):
-    base = sqlite3.connect('dataBase/DB_chat_test.db')
+    base = sqlite3.connect('../../dataBase/DB_chat_test.db')
     cursor = base.cursor()
     res = cursor.execute('SELECT quantity_question FROM tests WHERE id == ? ', (id_test,)).fetchall()
     base.close()
@@ -42,7 +42,7 @@ def get_quantity_questions_test(id_test):
 
 
 def get_one_question(id_test, number_question):
-    base = sqlite3.connect('dataBase/DB_chat_test.db')
+    base = sqlite3.connect('../../dataBase/DB_chat_test.db')
     cursor = base.cursor()
     res = cursor.execute(
         'SELECT question, choices, correct FROM questions WHERE id_test == ? AND number_question == ? ',
@@ -53,7 +53,7 @@ def get_one_question(id_test, number_question):
 
 
 def get_name_and_quantity_attempts_test(id_test):
-    base = sqlite3.connect('dataBase/DB_chat_test.db')
+    base = sqlite3.connect('../../dataBase/DB_chat_test.db')
     cursor = base.cursor()
     res = cursor.execute(
         f'SELECT name_test, quantity_attempts FROM tests WHERE id == ? ', (id_test,)).fetchall()
@@ -62,7 +62,7 @@ def get_name_and_quantity_attempts_test(id_test):
 
 
 def set_result(number_group, id_student, result, id_test, all_attempts):
-    base = sqlite3.connect('dataBase/DB_chat_test.db')
+    base = sqlite3.connect('../../dataBase/DB_chat_test.db')
     cursor = base.cursor()
     res = cursor.execute(
         f'SELECT remaining_attempts FROM results WHERE id_student == {id_student} AND id_test == {id_test}').fetchall()

@@ -4,14 +4,14 @@ import DBHelper
 import localData
 
 bot = telebot.TeleBot(localData.token)
-qur_group_student = ''  # группа текущего сеанса
-qur_name = ''  # имя пользователя текущего сеанса
-qur_id = ''  # id текущего сеанса
-qur_id_test = ''  # id текущего теста
+cur_group_student = ''  # группа текущего сеанса
+cur_name = ''  # имя пользователя текущего сеанса
+cur_id = ''  # id текущего сеанса
+cur_id_test = ''  # id текущего теста
 flag_authorized = False  # пройдена ли авторизация
 flag_get_answer = False  # получен ли ответ на текущий вопрос
 answers = []  # ответы пользователя
-qur_answer = -1  # ответ на текущий вопрос
+cur_answer = -1  # ответ на текущий вопрос
 
 
 @bot.message_handler(commands=['start'])
@@ -29,8 +29,8 @@ def admin(message):
     # get_id_student(message)
     global flag_authorized
     flag_authorized = True
-    global qur_group_student
-    qur_group_student = '3932'
+    global cur_group_student
+    cur_group_student = '3932'
 
 
 @bot.message_handler(commands=['cancel'])
@@ -45,32 +45,32 @@ def login(message):
 
 
 @bot.message_handler(commands=['logout'])
-def login(message):
-    global qur_group_student
-    global qur_name
-    global qur_id
-    global qur_id_test
+def logout(message):
+    global cur_group_student
+    global cur_name
+    global cur_id
+    global cur_id_test
     global flag_authorized
     global flag_get_answer
     global answers
-    global qur_answer
+    global cur_answer
 
-    qur_group_student = ''
-    qur_name = ''
-    qur_id = ''
-    qur_id_test = ''  # id текущего теста
+    cur_group_student = ''
+    cur_name = ''
+    cur_id = ''
+    cur_id_test = ''  # id текущего теста
     flag_authorized = False  # пройдена ли авторизация
     flag_get_answer = False  # получен ли ответ на текущий вопрос
     answers = []  # ответы пользователя
-    qur_answer = -1  # ответ на текущий вопрос
+    cur_answer = -1  # ответ на текущий вопрос
     group = bot.send_message(message.chat.id, 'Вы вышли из своего профиля')
 
 
 def get_number_group(message):
     if len(DBHelper.find_in_group(message.text)) > 0:  # message.text == '3932':
         # bot.send_message(message.chat.id, f"your group = {message.text}")
-        global qur_group_student
-        qur_group_student = message.text
+        global cur_group_student
+        cur_group_student = message.text
         name = bot.send_message(message.chat.id, 'Отправьте свое имя и фамилию:')
         bot.register_next_step_handler(name, get_name_student)
     elif message.text == '/cancel':
@@ -83,10 +83,12 @@ def get_number_group(message):
 
 
 def get_name_student(message):
-    buf_id = DBHelper.find_id_student(qur_group_student, message.text)
+    buf_id = DBHelper.find_id_student(cur_group_student, message.text)
     if len(buf_id) > 0:
-        global qur_id
-        qur_id = buf_id[0][0]
+        global cur_name
+        global cur_id
+        cur_name = message.text
+        cur_id = buf_id[0][0]
         # print("qur_id = ", buf_id)
         id_student = bot.send_message(message.chat.id,
                                       'отправьте свой Идентификатор студента '
@@ -102,13 +104,13 @@ def get_name_student(message):
 
 
 def get_id_student(message):
-    if message.text == qur_id:
+    if message.text == cur_id:
         global flag_authorized
         flag_authorized = True
         bot.send_message(message.chat.id,
-                         f'добро пожаловать,{qur_name}!' + 'Вы успешно авторизовались. '
-                                                           'Теперь Вы можете ознакомиться с доступными для Вас тестами '
-                                                           ' (/check_available_tests).')
+                         f'добро пожаловать, {cur_name}!' + ' Вы успешно авторизовались. '
+                                                            'Теперь Вы можете ознакомиться с доступными для Вас тестами '
+                                                            ' (/check_available_tests).')
     elif message.text == '/cancel':
         bot.send_message(message.chat.id, 'Вы прервали операцию авторизации.')
     else:
@@ -121,7 +123,7 @@ def get_id_student(message):
 @bot.message_handler(commands=['check_available_tests'])
 def check_available_test(message):
     if flag_authorized:
-        available = DBHelper.find_available_test(qur_group_student)
+        available = DBHelper.find_available_test(cur_group_student)
         if len(available) > 0:
             markup_inline = types.InlineKeyboardMarkup()
             for i in range(0, len(available)):
@@ -138,8 +140,8 @@ def check_available_test(message):
 @bot.callback_query_handler(func=lambda call: True)
 def answer_test(call):
     if call.data.find('test') != -1:
-        global qur_id_test
-        qur_id_test = call.data[4:]
+        global cur_id_test
+        cur_id_test = call.data[4:]
         markup_inline = types.InlineKeyboardMarkup()
         item = types.InlineKeyboardButton(text="Начать", callback_data='start_t')
         markup_inline.add(item)
@@ -157,8 +159,8 @@ def answer_test(call):
 
 
 def create_description_for_test():
-    buffer = DBHelper.get_description_for_test(qur_id_test)
-    quantity_attempts = DBHelper.get_name_and_quantity_attempts_test(qur_id_test)
+    buffer = DBHelper.get_description_for_test(cur_id_test)
+    quantity_attempts = DBHelper.get_name_and_quantity_attempts_test(cur_id_test)
     print(quantity_attempts)
     if len(quantity_attempts) > 0:
         quantity_attempts = quantity_attempts[0][1]
@@ -172,10 +174,10 @@ def create_description_for_test():
 
 def take_button_answer(data):
     print("data = " + data)
-    global qur_answer
+    global cur_answer
     global flag_get_answer
     flag_get_answer = True
-    qur_answer = int(data[6:7])
+    cur_answer = int(data[6:7])
     check = data.find('+')
     if check != -1:
         number = int(data[check + 1:])
@@ -189,12 +191,12 @@ def save_all_answer(message):
     for i in range(0, len(answers)):
         format_answer.append(f'{i + 1}) {answers[i]}')
     format_answer = '\n'.join(format_answer)
-    data_about_test = DBHelper.get_name_and_quantity_attempts_test(qur_id_test)
+    data_about_test = DBHelper.get_name_and_quantity_attempts_test(cur_id_test)
     bot.send_message(message.chat.id,
                      f"{data_about_test[0][0]}\nВаш результат: {count_right_answers} из {len(answers)} \n{format_answer}")
-    mass = [qur_group_student, qur_id, int(count_right_answers), int(qur_id_test), int(data_about_test[0][1])]
+    mass = [cur_group_student, cur_id, int(count_right_answers), int(cur_id_test), int(data_about_test[0][1])]
     print(mass)
-    DBHelper.set_result(qur_group_student, qur_id, int(count_right_answers), int(qur_id_test),
+    DBHelper.set_result(cur_group_student, cur_id, int(count_right_answers), int(cur_id_test),
                         int(data_about_test[0][1]))
 
 
@@ -206,7 +208,7 @@ def get_number_edit_answer(message):
 def edit_answer(message):
     if len(answers) >= int(message.text) > 0:
         number_question = int(message.text) - 1
-        buffer_question = DBHelper.get_one_question(qur_id_test, number_question)
+        buffer_question = DBHelper.get_one_question(cur_id_test, number_question)
         send_question(message, number_question, buffer_question)
         end_test(message)
     else:
@@ -236,17 +238,17 @@ def send_question(message, number_question, buffer_question):
         # print(flag_get_answer)
         continue
     bot.send_message(message.chat.id,
-                     f"ответ '{buffer_question[qur_answer - 1][1]}' сохранен")
+                     f"ответ '{buffer_question[cur_answer - 1][1]}' сохранен")
 
     flag_get_answer = False
 
 
 def take_test(message):
-    global qur_id_test
-    quantity = int(DBHelper.get_quantity_questions_test(qur_id_test)[0][0])
+    global cur_id_test
+    quantity = int(DBHelper.get_quantity_questions_test(cur_id_test)[0][0])
     init_answers(quantity)
     for i in range(0, quantity, 1):
-        buffer_question = DBHelper.get_one_question(qur_id_test, i)
+        buffer_question = DBHelper.get_one_question(cur_id_test, i)
         # print(f'id_test = {qur_id_test},i = {i}')
         # print(buffer_question)
         # buffer_question[0][0] - сам вопрос

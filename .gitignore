@@ -1,9 +1,10 @@
 .handler-saves/
 .idea/
 __pycache__/
-localData.py
-botTeter.py
-dataBaseTests.py
-dataBase.py
+src/telegram testing bot/localData.py
+old files/botTeter.py
+old files/dataBaseTests.py
+old files/dataBase.py
 dataBase/questions.sqbpro
 dataBase/before/
+old files/
