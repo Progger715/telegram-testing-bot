@@ -4,9 +4,9 @@ import DBHelper
 import localData
 
 bot = telebot.TeleBot(localData.token)
-cur_group_student = ''  # группа текущего сеанса
+cur_id_group_student = ''  # группа текущего сеанса
 cur_name = ''  # имя пользователя текущего сеанса
-cur_id = ''  # id текущего сеанса
+cur_passwords = ''  # id текущего сеанса
 cur_id_test = ''  # id текущего теста
 flag_authorized = False  # пройдена ли авторизация
 flag_get_answer = False  # получен ли ответ на текущий вопрос
@@ -14,8 +14,30 @@ answers = []  # ответы пользователя
 cur_answer = -1  # ответ на текущий вопрос
 
 
+# dict = {
+#   'user1-chat-id': {
+#      'api_key': 'ключ1',
+#      'profile_id': 'id1'
+#   },
+#   'user2-chat-id': {
+#      'api_key': 'ключ2',
+#      'profile_id': 'id2'
+#   },
+# }
+#
+#
+# cur_data = {
+#     'chat_id': {
+#         'group': '3932',
+#
+#     }
+# }
+
+
 @bot.message_handler(commands=['start'])
 def start(message):
+    print(type('asdfg'))
+    print("id = ", type(message.chat.id))
     bot.send_message(message.chat.id, 'Вы запустили бота!')
 
 
@@ -26,11 +48,10 @@ def stop(message):
 
 @bot.message_handler(commands=['admin'])
 def admin(message):
-    # get_id_student(message)
     global flag_authorized
     flag_authorized = True
-    global cur_group_student
-    cur_group_student = '3932'
+    global cur_id_group_student
+    cur_id_group_student = '3932'
 
 
 @bot.message_handler(commands=['cancel'])
@@ -44,33 +65,11 @@ def login(message):
     bot.register_next_step_handler(group, get_number_group)
 
 
-@bot.message_handler(commands=['logout'])
-def logout(message):
-    global cur_group_student
-    global cur_name
-    global cur_id
-    global cur_id_test
-    global flag_authorized
-    global flag_get_answer
-    global answers
-    global cur_answer
-
-    cur_group_student = ''
-    cur_name = ''
-    cur_id = ''
-    cur_id_test = ''  # id текущего теста
-    flag_authorized = False  # пройдена ли авторизация
-    flag_get_answer = False  # получен ли ответ на текущий вопрос
-    answers = []  # ответы пользователя
-    cur_answer = -1  # ответ на текущий вопрос
-    group = bot.send_message(message.chat.id, 'Вы вышли из своего профиля')
-
-
 def get_number_group(message):
-    if len(DBHelper.find_in_group(message.text)) > 0:  # message.text == '3932':
+    if DBHelper.checking_group_availability(message.text):  # message.text == '3932':
         # bot.send_message(message.chat.id, f"your group = {message.text}")
-        global cur_group_student
-        cur_group_student = message.text
+        global cur_id_group_student
+        cur_id_group_student = message.text
         name = bot.send_message(message.chat.id, 'Отправьте свое имя и фамилию:')
         bot.register_next_step_handler(name, get_name_student)
     elif message.text == '/cancel':
@@ -83,15 +82,14 @@ def get_number_group(message):
 
 
 def get_name_student(message):
-    buf_id = DBHelper.find_id_student(cur_group_student, message.text)
-    if len(buf_id) > 0:
+    possible_passwords = DBHelper.get_possible_passwords(message.text, cur_id_group_student)
+    if len(possible_passwords) > 0:
         global cur_name
-        global cur_id
+        global cur_passwords
         cur_name = message.text
-        cur_id = buf_id[0][0]
-        # print("qur_id = ", buf_id)
+        cur_passwords = possible_passwords.copy()
         id_student = bot.send_message(message.chat.id,
-                                      'отправьте свой Идентификатор студента '
+                                      'отправьте свой Идентификатор студента (пароль)'
                                       '(указан в личном кабинете в разделе "Профиль"):')
         bot.register_next_step_handler(id_student, get_id_student)
     elif message.text == '/cancel':
@@ -104,13 +102,16 @@ def get_name_student(message):
 
 
 def get_id_student(message):
-    if message.text == cur_id:
-        global flag_authorized
-        flag_authorized = True
+    global flag_authorized
+    for i in cur_passwords:
+        if message.text == i:
+            flag_authorized = True
+            break
+    if flag_authorized:
         bot.send_message(message.chat.id,
-                         f'добро пожаловать, {cur_name}!' + ' Вы успешно авторизовались. '
-                                                            'Теперь Вы можете ознакомиться с доступными для Вас тестами '
-                                                            ' (/check_available_tests).')
+                         f'Добро пожаловать, {cur_name}!' + ' Вы успешно авторизовались. '
+                                                            'Теперь Вы можете ознакомиться с доступными для Вас '
+                                                            'тестами (/check_available_tests).')
     elif message.text == '/cancel':
         bot.send_message(message.chat.id, 'Вы прервали операцию авторизации.')
     else:
@@ -120,14 +121,37 @@ def get_id_student(message):
         bot.register_next_step_handler(msg, get_id_student)
 
 
+@bot.message_handler(commands=['logout'])
+def logout(message):
+    global cur_id_group_student
+    global cur_name
+    global cur_passwords
+    global cur_id_test
+    global flag_authorized
+    global flag_get_answer
+    global answers
+    global cur_answer
+
+    cur_id_group_student = ''
+    cur_name = ''
+    cur_passwords = ''
+    cur_id_test = ''  # id текущего теста
+    flag_authorized = False  # пройдена ли авторизация
+    flag_get_answer = False  # получен ли ответ на текущий вопрос
+    answers = []  # ответы пользователя
+    cur_answer = -1  # ответ на текущий вопрос
+    bot.send_message(message.chat.id, 'Вы вышли из своего профиля')
+
+
 @bot.message_handler(commands=['check_available_tests'])
 def check_available_test(message):
     if flag_authorized:
-        available = DBHelper.find_available_test(cur_group_student)
+        available = DBHelper.find_available_test(cur_id_group_student)
+        print(available)
         if len(available) > 0:
             markup_inline = types.InlineKeyboardMarkup()
             for i in range(0, len(available)):
-                item = types.InlineKeyboardButton(text=available[i][0], callback_data=f'test{available[i][1]}')
+                item = types.InlineKeyboardButton(text=available[i], callback_data=f'test{available[i]}')
                 markup_inline.add(item)
             bot.send_message(message.chat.id, 'Вам доступны следующие тесты:', reply_markup=markup_inline)
         else:
@@ -193,10 +217,11 @@ def save_all_answer(message):
     format_answer = '\n'.join(format_answer)
     data_about_test = DBHelper.get_name_and_quantity_attempts_test(cur_id_test)
     bot.send_message(message.chat.id,
-                     f"{data_about_test[0][0]}\nВаш результат: {count_right_answers} из {len(answers)} \n{format_answer}")
-    mass = [cur_group_student, cur_id, int(count_right_answers), int(cur_id_test), int(data_about_test[0][1])]
+                     f"{data_about_test[0][0]}\nВаш результат: {count_right_answers} "
+                     f"из {len(answers)} \n{format_answer}")
+    mass = [cur_id_group_student, cur_passwords, int(count_right_answers), int(cur_id_test), int(data_about_test[0][1])]
     print(mass)
-    DBHelper.set_result(cur_group_student, cur_id, int(count_right_answers), int(cur_id_test),
+    DBHelper.set_result(cur_id_group_student, cur_passwords, int(count_right_answers), int(cur_id_test),
                         int(data_about_test[0][1]))
 
 
@@ -249,7 +274,7 @@ def take_test(message):
     init_answers(quantity)
     for i in range(0, quantity, 1):
         buffer_question = DBHelper.get_one_question(cur_id_test, i)
-        # print(f'id_test = {qur_id_test},i = {i}')
+        # print(fid_test = {qur_id_test},i = {i}')
         # print(buffer_question)
         # buffer_question[0][0] - сам вопрос
         # buffer_question[n][1] - вариант ответа
