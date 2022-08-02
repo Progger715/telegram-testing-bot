@@ -146,13 +146,15 @@ def logout(message):
 @bot.message_handler(commands=['check_available_tests'])
 def check_available_test(message):
     if flag_authorized:
-        available = DBHelper.find_available_test(cur_id_group_student)
+        available = DBHelper.get_name_and_id_available_test(cur_id_group_student)
         print(available)
         if len(available) > 0:
             markup_inline = types.InlineKeyboardMarkup()
             for i in range(0, len(available)):
-                item = types.InlineKeyboardButton(text=available[i], callback_data=f'test{available[i]}')
+                print(available[i])
+                item = types.InlineKeyboardButton(text=available[i][0], callback_data=f'test{available[i][1]}')
                 markup_inline.add(item)
+
             bot.send_message(message.chat.id, 'Вам доступны следующие тесты:', reply_markup=markup_inline)
         else:
             bot.send_message(message.chat.id, 'Для Вас нет доступных тестов!')
