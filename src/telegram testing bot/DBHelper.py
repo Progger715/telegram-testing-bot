@@ -1,6 +1,7 @@
 # import sqlite3
 import psycopg2
 import localData
+import datetime
 
 
 def connect_to_db():
@@ -82,9 +83,10 @@ def checking_group_availability(group):
         connection.close()
 
 
-def get_possible_passwords(name, group):
+def get_possible_students(name, group):
     '''
-    Checks if there is a client with the name "name" and, if there is, returns a list of possible passwords.\n
+    Checks if there is a client with the name "name" in group "group" and,
+    if there is, returns a possible passwords and id students.\n
     :param name: client name
     :param group: client number group (str)
     :return: possible_passwords[]
@@ -92,7 +94,7 @@ def get_possible_passwords(name, group):
     try:
         connection = connect_to_db()
         with connection.cursor() as cursor:
-            cursor.execute(f"""SELECT password FROM students s LEFT JOIN groups g ON s.group_id = g.id
+            cursor.execute(f"""SELECT password, s.id FROM students s LEFT JOIN groups g ON s.group_id = g.id
              WHERE g.number_group='{group}' AND s.name='{name}';""")
             res = cursor.fetchall()
             finish_result = []
@@ -191,6 +193,142 @@ def insert_answers_in_data_base():
         connection.close()
 
 
+def get_data_for_description_test(test_id):
+    try:
+        connection = connect_to_db()
+        with connection.cursor() as cursor:
+            cursor.execute(f"""SELECT tests.name, tests.quantity_questions, 
+            tests.quantity_attempts, tests.description, teachers.name  FROM tests 
+            LEFT JOIN teachers ON tests.author_id = teachers.id WHERE tests.id = {int(test_id)} """)
+            connection.commit()
+            res = cursor.fetchall()
+            # finish_result = []
+            # for cpl in res:
+            #     for mass in cpl:
+            #         finish_result.append(mass)
+            return res
+    except Exception as ex:
+        print('[Error PostgreSQL] insert_answers_in_data_base()', ex)
+    finally:
+        connection.close()
+
+
+def get_all_questions(test_id):
+    try:
+        connection = connect_to_db()
+        with connection.cursor() as cursor:
+            cursor.execute(f"""SELECT number_question, question FROM questions WHERE tests_id = {test_id} 
+            ORDER BY number_question""")
+            connection.commit()
+            res = cursor.fetchall()
+            # finish_result = []
+            # for cpl in res:
+            #     for mass in cpl:
+            #         finish_result.append(mass)
+            return res
+    except Exception as ex:
+        print('[Error PostgreSQL] insert_answers_in_data_base()', ex)
+    finally:
+        connection.close()
+
+
+def get_all_answers(test_id):
+    '''
+
+    :param test_id:
+    :return: [(number_question_for(int),
+               answer(str),
+               correct(bool)), ]
+    '''
+    try:
+        connection = connect_to_db()
+        with connection.cursor() as cursor:
+            cursor.execute(f"""SELECT q.number_question, answer, flag_correct FROM answers a LEFT JOIN questions q on q.id = a.question_id
+             WHERE tests_id = {test_id} ORDER BY number_question""")
+            connection.commit()
+            res = cursor.fetchall()
+            return res
+    except Exception as ex:
+        print('[Error PostgreSQL] get_all_answers(test_id)\t', ex)
+    finally:
+        connection.close()
+    # try:
+    #     connection = connect_to_db()
+    #     with connection.cursor() as cursor:
+    #         cursor.execute(f"""SELECT number_question, question FROM questions WHERE tests_id = {test_id}
+    #         ORDER BY number_question""")
+    #         connection.commit()
+    #         res = cursor.fetchall()
+    #         return res
+    # except Exception as ex:
+    #     print('[Error PostgreSQL] insert_answers_in_data_base()', ex)
+    # finally:
+    #     connection.close()
+
+
+def record_result(student_id, tests_id, result, date, remaining_attempts):
+    if remaining_attempts < 0:
+        print("[Error] record_result: remaining_attempts < 0")
+        return
+    try:
+        connection = connect_to_db()
+        with connection.cursor() as cursor:
+            cursor.execute(f"""INSERT INTO results (students_id, tests_id, result, date, remaining_attempts)
+                 VALUES ({student_id},{tests_id},{result},'{date}',{remaining_attempts})""")
+        connection.commit()
+    except Exception as ex:
+        print('[Error PostgreSQL] record_result(student_id, tests_id, result, date)', ex)
+    finally:
+        connection.close()
+
+
+def get_remaining_attempts_for_test(student_id, test_id):
+    try:
+        connection = connect_to_db()
+        with connection.cursor() as cursor:
+            cursor.execute(f"""SELECT MIN(remaining_attempts) FROM results 
+                WHERE tests_id = {test_id} AND students_id = {student_id}""")
+            res = cursor.fetchall()
+            if res[0][0] is None:
+                print("none")
+                cursor.execute(f"""SELECT quantity_attempts FROM tests WHERE id = {test_id}""")
+                res = cursor.fetchall()
+            return res[0][0]
+    except Exception as ex:
+        print('[Error PostgreSQL] get_remaining_attempts_for_test(student_id, test_id)', ex)
+    finally:
+        connection.close()
+
+
+def get_one_question(test_id, number_question):
+    try:
+        connection = connect_to_db()
+        with connection.cursor() as cursor:
+            cursor.execute(
+                f"""SELECT question FROM questions  WHERE tests_id = {test_id} AND number_question = {number_question}""")
+            res = cursor.fetchall()
+            return res
+    except Exception as ex:
+        print('[Error PostgreSQL] get_one_question(test_id, number_question)\t', ex)
+    finally:
+        connection.close()
+
+
+def get_answers_for_one_question(test_id, number_question):
+    try:
+        connection = connect_to_db()
+        with connection.cursor() as cursor:
+            cursor.execute(f"""SELECT q.number_question, answer, flag_correct FROM answers a LEFT JOIN questions q 
+            on q.id = a.question_id WHERE tests_id = {test_id} AND number_question = {number_question}""")
+            connection.commit()
+            res = cursor.fetchall()
+            return res
+    except Exception as ex:
+        print('[Error PostgreSQL] get_answers_for_one_question(test_id, number_question)\t', ex)
+    finally:
+        connection.close()
+
+
 #
 # # old methods
 # # def find_available_test(number_group):
@@ -279,6 +417,14 @@ def insert_answers_in_data_base():
 
 
 if __name__ == '__main__':
+    # print(get_remaining_attempts_for_test(1, 1))
+    # ra = get_remaining_attempts_for_test(1, 1)
+    # dt = datetime.datetime.now()
+    # record_result(1, 1, 5, dt, ra)
+
+
+
+
     def prepare_data_questions_for_request_sql(list_questions):
         result = []
         number_question = 1;
@@ -288,21 +434,6 @@ if __name__ == '__main__':
         # print(result)
 
 
-    # def prepare_data_answers_for_request_sql(list_answers):
-    #     result = []
-    #     number_question = 1
-    #     for one_answer in list_answers:
-    #         result.append((number_question, one_answer, 1))
-    #         number_question += 1
-    #     # print(result)
-
-    # print(check_session(1949206706))
-    # # update_session(1949206706, 'Егорнов', 3, True)
-    # create_note_session(1949206706, 'Егор Крикунов', 1, True)
-    # print(check_session(1949206706))
-    # buf = get_possible_passwords('Егор Крикунов', '3932')
-    # print(buf)
-    # print(get_all_answers())
     questions = ['Как называется таблица умножения?',
                  'Как называется наука о геометрических фигурах?',
                  'Короче ли катет гипотенузы?',
@@ -313,7 +444,3 @@ if __name__ == '__main__':
                [["1) Да", True], ["2) Нет", False], ["3) Они равны", False]],
                [["1) Нет", False], ["2) Да", True], ["3) Зависит от единиц измерения", False]],
                [["1) 5 десятков", False], ["2) 55 десятков", True], ["3) 555 десятков", False]]]
-
-    # insert_questions_in_data_base([123])
-    insert_answers_in_data_base()
-    # prepare_data_question_for_request_sql(questions)
